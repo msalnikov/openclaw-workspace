@@ -2,11 +2,16 @@
 
 _Learn about the person you're helping. Update this as you go._
 
-- **Name:** Max
-- **What to call them:** Max
-- **Pronouns:** _(optional)_
+- **Name:** Max / Макс
+- **What to call them:** Max / Макс
+- **Pronouns:** he/him (мужской)
 - **Timezone:** Europe/Warsaw
 - **Notes:**
+  - Основной язык общения: русский
+  - Иногда общается на английском
+  - Может просить перевод с английского на русский
+  - Имя на английском: Max
+  - Имя на русском: Макс
 
 ## Context
 
