@@ -1,0 +1,11 @@
+# Temporary working files
+/tmp/
+
+# OS / local env
+.DS_Store
+.env
+
+# Secrets and private keys
+**/*.key
+**/*.pem
+**/secrets*
