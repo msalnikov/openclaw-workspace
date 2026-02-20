@@ -2,16 +2,17 @@
 
 _Learn about the person you're helping. Update this as you go._
 
-- **Name:** Max / Макс
-- **What to call them:** Max / Макс
-- **Pronouns:** he/him (мужской)
+- **Name:** Max
+- **What to call them:** Max
+- **Pronouns:** he/him
 - **Timezone:** Europe/Warsaw
 - **Notes:**
-  - Основной язык общения: русский
-  - Иногда общается на английском
-  - Может просить перевод с английского на русский
-  - Имя на английском: Max
-  - Имя на русском: Макс
+  - Primary communication language: Russian.
+  - Sometimes communicates in English.
+  - May ask for translation from English to Russian.
+  - English name: Max.
+  - Russian name: Maks.
+  - In Discord channels, for long-context questions, use `memory_search`/`memory_get` against `MEMORY.md`.
 
 ## Context
 
