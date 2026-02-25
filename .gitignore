@@ -9,3 +9,4 @@
 **/*.key
 **/*.pem
 **/secrets*
+projects/utilities-payments/media/
