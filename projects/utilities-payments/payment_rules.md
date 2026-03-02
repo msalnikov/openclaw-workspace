@@ -141,3 +141,61 @@ A migrated setup is considered correct only if it can:
 5. Include addends for `Теплоенерго`.
 6. Refuse unknown templates without hallucinating values.
 7. Preserve numeric formatting with comma decimals as in source style.
+
+## 9) Diagnostics and Quality Verification (mandatory after migration)
+
+Purpose: quickly confirm that processing quality in a new environment is identical to the previous one.
+
+### 9.1 Smoke test sequence
+Run tests in this order:
+1. One bill per provider (4 single-bill tests)
+2. One combined batch test (all 4 bills in one message)
+3. One negative test (unknown template)
+4. One low-quality image test (tilt/blur/noise)
+
+### 9.2 Required assertions per provider
+For each single-bill test, verify:
+- Correct provider classification label:
+  - Водоканал / Електроенергія / Теплоенерго / ОСББ
+- Correct date extraction
+- Correct payment field extraction per provider rules
+- Validation logic applied silently unless mismatch detected
+- No invented values when source is unreadable
+
+### 9.3 Required assertions for combined mode
+For a 4-bill batch, verify output strictly matches contract:
+- Line 1: month/year only (or per-org months if different)
+- Organization lines present in stable order:
+  1) Водоканал
+  2) Електроенергія
+  3) Теплоенерго
+  4) ОСББ
+- Organization lines contain numbers only (without `грн`)
+- `Теплоенерго` includes addends in parentheses
+- Final line format: `Всього: <number> грн`
+- Arithmetic consistency:
+  - `Всього` equals sum of all four organization values
+
+### 9.4 Numeric validation policy
+- Decimal separator style should remain comma-based for user-facing values.
+- Any internal recalculation must match extracted totals exactly.
+- If mismatch occurs, return explicit error instead of corrected guess.
+
+### 9.5 Error handling expectations
+System must explicitly report errors for:
+- Unknown/untrained template
+- Missing required field
+- Unreadable critical numeric cell
+- Validation mismatch between control and target fields
+
+No hallucinated fallback values are allowed.
+
+### 9.6 Regression baseline (recommended)
+Keep a small fixed test pack in project media archive:
+- 4 known-good bills (one per provider)
+- 1 known mixed-month batch
+- 1 intentionally unknown template
+- 1 low-quality but readable bill
+
+After migration, run baseline and compare outputs with expected golden results.
+Any difference in fields, formatting, or totals is a migration regression.
