@@ -1,63 +1,143 @@
-# Utility Bills Parsing Rules (Discord channel: #платежки)
+# Utilities Payments — Full Processing Specification
 
-This file stores the agreed parsing/output rules for recurring bill processing.
+This document is the single source of truth for migrating the utility-bills workflow to another machine without quality loss.
 
-## Supported bill types and output fields
+## 1) Project scope
 
-### 1) Київводоканал
-- Organization label in output: **Водоканал**
-- Output fields:
+- Project name: **Utilities Payments**
+- Channel scope: Discord channel **#платежки**
+- Goal: parse utility bills from images and return stable, compact payment summaries.
+- Input mode:
+  - Single bill image (per-provider extraction)
+  - Batch of 4 bill images (monthly combined summary)
+
+## 2) Storage and files
+
+- Project root: `projects/utilities-payments/`
+- Rules file: `projects/utilities-payments/payment_rules.md`
+- Project README: `projects/utilities-payments/README.md`
+- Bill image archive for this workflow: `projects/utilities-payments/media/`
+- Git ignore for media: `projects/utilities-payments/.gitignore` contains `media/`
+
+### Migration requirement
+During migration, preserve:
+- `projects/utilities-payments/payment_rules.md`
+- `projects/utilities-payments/README.md`
+- `projects/utilities-payments/.gitignore`
+- (optional, if historical dataset is needed) `projects/utilities-payments/media/`
+
+## 3) Supported bill templates
+
+Exactly 4 supported organizations/templates.
+
+### A) Київводоканал
+- Output organization label: **Водоканал**
+- Required extracted fields:
   - Organization
-  - Bill date (billing month/date from document)
-  - **Загальна сума до сплати**
-- Validation rule:
-  - Recalculate by summing the **Нарахов.** column.
-  - If mismatch or unreadable required fields: return an error, do not guess.
+  - Bill date (month/date from the bill)
+  - `Загальна сума до сплати`
+- Validation:
+  - Recalculate from column `Нарахов.` sum.
+  - If required values are unreadable or mismatch occurs: return explicit error, no guessing.
 
-### 2) Київтеплоенерго
-- Organization label in output: **Теплоенерго**
-- Output fields:
+### B) Київтеплоенерго
+- Output organization label: **Теплоенерго**
+- Required extracted fields:
   - Organization
   - Bill date
-  - **До сплати** (sum of all rows in the **До сплати** column)
-- Fallback rule:
-  - If **До сплати** values are unreadable, use **Нараховано за ...** values (they should match).
-- While returning this bill separately, show addends used to build total.
+  - `До сплати` = sum of all rows in column `До сплати`
+- Fallback:
+  - If `До сплати` row values are hard to read, use `Нараховано за ...` row values.
+- Mandatory display rule:
+  - Always show addends used for the final `До сплати` total.
 
-### 3) Київські енергетичні послуги
-- Organization label in output: **Електроенергія**
-- Output fields:
+### C) Київські енергетичні послуги
+- Output organization label: **Електроенергія**
+- Required extracted fields:
   - Organization
   - Bill date
-  - **До сплати** (from **До сплати за фактичне споживання**)
-- Validation rule:
-  - Cross-check with line **Нараховано у <MONTH>**.
+  - `До сплати` = value from `До сплати за фактичне споживання`
+- Validation:
+  - Cross-check against `Нараховано у <MONTH>`.
 
-### 4) ОСББ "Ломоносова 83а"
-- Organization label in output: **ОСББ**
-- Output fields:
+### D) ОСББ "Ломоносова 83а"
+- Output organization label: **ОСББ**
+- Required extracted fields:
   - Organization
   - Bill date
-  - **До сплати** (value from row **РАЗОМ**, column **До сплати**)
-- Validation rule:
-  - Cross-check with row **РАЗОМ** in column **Нараховано у <MONTH> <YEAR>**.
+  - `До сплати` = row `РАЗОМ`, column `До сплати`
+- Validation:
+  - Cross-check against row `РАЗОМ` in `Нараховано у <MONTH> <YEAR>`.
 
-## Unknown bill formats
-- If a bill does not match trained/supported templates, explicitly report that it is an unknown/untrained type.
-- Do not fabricate values.
+## 4) Unknown templates / low confidence
 
-## Combined summary format (when 4 bills are sent together)
-- First line: billing month/year only (no prefix like "Месяц квитанций").
-  - If months differ, show month per organization.
-- Then show per-organization amounts:
-  - Водоканал: <number>
-  - Електроенергія: <number>
-  - Теплоенерго: <number>
-  - ОСББ: <number>
-- Do **not** append "грн" to organization lines.
-- Final line:
-  - **Всього: <number> грн**
+If a received bill does not match one of the 4 trained templates, or required values cannot be reliably read:
+- explicitly report: unknown/untrained bill type or extraction error
+- do not invent, estimate, or autofill values
 
-## Style constraints from user
-- For successful checks, do not mention validation steps.
-- Mention validation/consistency issues only when there is an error or mismatch.
+## 5) Output contract
+
+## 5.1 Single-bill output
+Use provider-specific fields:
+
+- Водоканал:
+  - `Организация: Водоканал`
+  - `Дата квитанции: ...`
+  - `Загальна сума до сплати: ...`
+
+- Електроенергія:
+  - `Организация: Електроенергія`
+  - `Дата квитанции: ...`
+  - `До сплати: ...`
+
+- Теплоенерго:
+  - `Организация: Теплоенерго`
+  - `Дата квитанции: ...`
+  - `До сплати: ... (a + b + c + ...)`
+
+- ОСББ:
+  - `Организация: ОСББ`
+  - `Дата квитанции: ...`
+  - `До сплати: ...`
+
+## 5.2 Combined output (all 4 bills)
+Expected structure:
+
+1. First line: month/year only (no prefix text)
+   - If all bills share same month → one common line (e.g., `Січень 2026`)
+   - If months differ → show month per organization
+2. Organization lines:
+   - `Водоканал: <number>`
+   - `Електроенергія: <number>`
+   - `Теплоенерго: <number> (<addends>)`
+   - `ОСББ: <number>`
+3. Final line:
+   - `Всього: <number> грн`
+
+Formatting constraints:
+- Do not append `грн` on organization lines
+- Keep `грн` only in `Всього`
+- For `Теплоенерго`, addends are mandatory in both single and combined outputs
+
+## 6) Validation visibility rules
+
+- Validation is always performed internally.
+- On successful validation, do not print validation details.
+- If mismatch/error occurs, explicitly report the issue.
+
+## 7) Operational behavior in this channel
+
+- Treat this channel as recurring monthly processing context.
+- Store incoming bill images in `projects/utilities-payments/media/` for this project workflow.
+- Maintain backward compatibility with this output contract unless the user updates rules.
+
+## 8) Quality checklist (for new environment acceptance)
+
+A migrated setup is considered correct only if it can:
+1. Correctly classify all 4 bill templates.
+2. Extract required values for each provider.
+3. Apply provider-specific validation/fallback rules.
+4. Produce exact combined format (`month line`, 4 org lines, `Всього ... грн`).
+5. Include addends for `Теплоенерго`.
+6. Refuse unknown templates without hallucinating values.
+7. Preserve numeric formatting with comma decimals as in source style.
