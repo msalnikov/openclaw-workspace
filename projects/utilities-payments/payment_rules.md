@@ -45,11 +45,15 @@ Exactly 4 supported organizations/templates.
 - Required extracted fields:
   - Organization
   - Bill date
-  - `До сплати` = sum of all rows in column `До сплати`
-- Fallback:
-  - If `До сплати` row values are hard to read, use `Нараховано за ...` row values.
+  - `До сплати` = sum of row values from column `Нараховано за ...`
+- Extraction rule:
+  - Use only the row values from the `Нараховано за ...` column.
+  - Do not switch to `До сплати` for final calculation.
 - Mandatory display rule:
-  - Always show addends used for the final `До сплати` total.
+  - Always show addends used for the final total.
+- Known correction from real use:
+  - A previous mistake incorrectly included `30,00` from the wrong place.
+  - For the tested February 2026 bill, the correct addends were `62,65 + 1184,56 + 29,30 + 42,44 = 1318,95`.
 
 ### C) Київські енергетичні послуги
 - Output organization label: **Електроенергія**
@@ -59,6 +63,11 @@ Exactly 4 supported organizations/templates.
   - `До сплати` = value from `До сплати за фактичне споживання`
 - Validation:
   - Cross-check against `Нараховано у <MONTH>`.
+- Important extraction note:
+  - Prioritize the field explicitly labeled `До сплати за фактичне споживання`.
+  - Do not confuse it with nearby totals, balances, debt/prepayment values, or other payable blocks.
+  - If several payable-looking numbers are present on the page, select the one semantically attached to `До сплати за фактичне споживання`, even if another nearby number looks more visually prominent.
+  - Known correction from real use: a visually confusing bill was initially misread, but the correct `До сплати за фактичне споживання` value was **436,32**.
 
 ### D) ОСББ "Ломоносова 83а"
 - Output organization label: **ОСББ**
@@ -130,6 +139,42 @@ Formatting constraints:
 - Treat this channel as recurring monthly processing context.
 - Store incoming bill images in `projects/utilities-payments/media/` for this project workflow.
 - Maintain backward compatibility with this output contract unless the user updates rules.
+- Before processing bills in this project, consult this file if there is any ambiguity about extraction rules, formatting, or known failure modes.
+
+## 7.1 Known failure modes and anti-error rules
+
+These rules were derived from real mistakes made during bill parsing and must be followed strictly.
+
+### A) Confidence discipline
+- Do not present uncertain OCR/visual reads as confident results.
+- If a value cannot be tied confidently to the required row and column, return an error instead of a guessed sum.
+- When the user challenges a result, switch immediately into verification mode instead of producing another speculative total.
+
+### B) Column locking
+- First determine which exact column is the source of truth for the provider.
+- Then read only that column for all required rows.
+- Do not mix values from `До сплати` and `Нараховано за ...` in one calculation unless the active rule explicitly says so.
+
+### C) Row-to-column binding
+- For every extracted number, identify both:
+  - the exact row label
+  - the exact column label
+- Only after row/column binding is confirmed should the sum be calculated.
+- Never rely on visually similar nearby numbers without semantic confirmation.
+
+### D) Теплоенерго-specific failure history
+- Real mistakes that must not be repeated:
+  - `1108,29` was misread as `1162,68` / `1168,29`
+  - `107,68` was misread as `121,80`
+  - extra `30,00` was incorrectly included from the wrong place
+- Therefore, for Теплоенерго:
+  - inspect each of the 4 target rows separately
+  - verify the chosen number belongs to the active source column
+  - avoid carrying over values from earlier attempts or from another column
+
+### E) Escalation rule
+- If the combined 4-bill image is too dense to read reliably, prefer asking for or using the separate bill image.
+- A clean single-bill image takes priority over a noisy combined context.
 
 ## 8) Quality checklist (for new environment acceptance)
 
